@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import PageHeader from '../../components/PageHeader';
-import { getImageUrl } from '@/lib/supabase';
+import { getImageUrl, parseLocalDate } from '@/lib/supabase';
 import type { Outfit, Garment } from '@/lib/database.types';
 
 interface OutfitWithGarments extends Outfit {
@@ -38,7 +38,7 @@ export default function CalendarPage() {
   }, [fetchOutfits]);
 
   async function handleDayClick(date: Date) {
-    const outfit = outfits.find(o => isSameDay(new Date(o.worn_date), date));
+    const outfit = outfits.find(o => isSameDay(parseLocalDate(o.worn_date), date));
     if (outfit) {
       // Fetch outfit details with garments
       const response = await fetch(`/api/outfits/${outfit.id}`);
@@ -52,7 +52,7 @@ export default function CalendarPage() {
   }
 
   function getOutfitForDate(date: Date): Outfit | undefined {
-    return outfits.find(o => isSameDay(new Date(o.worn_date), date));
+    return outfits.find(o => isSameDay(parseLocalDate(o.worn_date), date));
   }
 
   const monthStart = startOfMonth(currentMonth);
@@ -155,7 +155,7 @@ export default function CalendarPage() {
             <div className="aspect-video relative">
               <Image
                 src={getImageUrl(selectedOutfit.photo_url)}
-                alt={`Outfit on ${format(new Date(selectedOutfit.worn_date), 'MMMM d, yyyy')}`}
+                alt={`Outfit on ${format(parseLocalDate(selectedOutfit.worn_date), 'MMMM d, yyyy')}`}
                 fill
                 className="object-cover"
               />
@@ -163,7 +163,7 @@ export default function CalendarPage() {
             <div className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-zinc-900 dark:text-zinc-100">
-                  {format(new Date(selectedOutfit.worn_date), 'EEEE, MMMM d, yyyy')}
+                  {format(parseLocalDate(selectedOutfit.worn_date), 'EEEE, MMMM d, yyyy')}
                 </h3>
                 <button
                   onClick={() => setSelectedOutfit(null)}

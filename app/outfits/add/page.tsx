@@ -6,7 +6,7 @@ import Image from 'next/image';
 import PageHeader from '../../components/PageHeader';
 import ImageUpload from '../../components/ImageUpload';
 import { uploadImage, fileToBase64 } from '@/lib/storage';
-import { getImageUrl } from '@/lib/supabase';
+import { getImageUrl, getTodayString } from '@/lib/supabase';
 import type { Garment, Category, Season } from '@/lib/database.types';
 
 interface DetectedGarment {
@@ -25,7 +25,7 @@ export default function AddOutfitPage() {
   const [step, setStep] = useState<Step>('upload');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [wornDate, setWornDate] = useState(new Date().toISOString().split('T')[0]);
+  const [wornDate, setWornDate] = useState(getTodayString());
   const [detectedGarments, setDetectedGarments] = useState<DetectedGarment[]>([]);
   const [selectedGarments, setSelectedGarments] = useState<Map<number, Garment | 'new'>>(new Map());
   const [newGarmentData, setNewGarmentData] = useState<Map<number, { name: string; category: Category; season: Season }>>(new Map());
@@ -253,7 +253,7 @@ export default function AddOutfitPage() {
                 type="date"
                 value={wornDate}
                 onChange={(e) => setWornDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
+                max={getTodayString()}
                 className="w-full px-4 py-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100"
               />
             </div>

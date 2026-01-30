@@ -97,7 +97,7 @@ Even if the image quality is not perfect, do your best to identify the clothing 
           ],
         },
       ],
-      max_tokens: 1500,
+      max_tokens: 1000,
       response_format: { type: 'json_object' },
     });
 
