@@ -39,7 +39,19 @@ export default function ImageCropper({
 
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const { width, height } = e.currentTarget;
-    setCrop(centerAspectCrop(width, height, aspectRatio));
+    const initialCrop = centerAspectCrop(width, height, aspectRatio);
+    setCrop(initialCrop);
+    
+    // Also set completedCrop with pixel values so Done button works immediately
+    if (initialCrop.unit === '%') {
+      setCompletedCrop({
+        unit: 'px',
+        x: (initialCrop.x / 100) * width,
+        y: (initialCrop.y / 100) * height,
+        width: (initialCrop.width / 100) * width,
+        height: (initialCrop.height / 100) * height,
+      });
+    }
   }, [aspectRatio]);
 
   const getCroppedImg = useCallback(async (): Promise<Blob | null> => {
