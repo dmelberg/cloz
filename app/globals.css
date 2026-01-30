@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #fafafa;
   --foreground: #171717;
 }
 
@@ -22,5 +22,50 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe area padding for notched devices */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Hide scrollbar for clean mobile look */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Touch-friendly button press effect */
+.touch-press:active {
+  transform: scale(0.97);
+}
+
+/* Image aspect ratio container */
+.aspect-square {
+  aspect-ratio: 1 / 1;
+}
+
+/* Smooth image loading */
+img {
+  transition: opacity 0.3s ease;
+}
+
+/* Form input styling */
+input[type="file"] {
+  display: none;
+}
+
+/* Calendar day styling */
+.rdp-day_selected {
+  background-color: #7c3aed !important;
+}
+
+.rdp-day_today {
+  font-weight: bold;
+  color: #7c3aed;
 }

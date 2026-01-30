@@ -1,0 +1,21 @@
+{
+  "name": "Cloz - Wardrobe Manager",
+  "short_name": "Cloz",
+  "description": "Track your closet, outfits, and discover what to give away",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
