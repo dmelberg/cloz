@@ -2,7 +2,6 @@
 
 import { useRef, useState } from 'react';
 import Image from 'next/image';
-import heic2any from 'heic2any';
 
 interface ImageUploadProps {
   onImageSelect: (file: File) => void;
@@ -30,6 +29,8 @@ export default function ImageUpload({ onImageSelect, previewUrl, className = '' 
     if (isHeic) {
       try {
         setConverting(true);
+        // Dynamically import heic2any only when needed (client-side only)
+        const heic2any = (await import('heic2any')).default;
         // Convert HEIC to JPEG
         const convertedBlob = await heic2any({
           blob: file,
