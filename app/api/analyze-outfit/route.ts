@@ -21,6 +21,17 @@ interface DetectedGarment {
   confidence: number;
 }
 
+// Helper to detect image MIME type from base64
+function detectImageMimeType(base64: string): string {
+  // Check the first few bytes to determine format
+  if (base64.startsWith('/9j/')) return 'image/jpeg';
+  if (base64.startsWith('iVBORw0KGgo')) return 'image/png';
+  if (base64.startsWith('R0lGOD')) return 'image/gif';
+  if (base64.startsWith('UklGR')) return 'image/webp';
+  // Default to jpeg if unknown
+  return 'image/jpeg';
+}
+
 // POST /api/analyze-outfit - Analyze an outfit photo to detect garments
 export async function POST(request: NextRequest) {
   try {
@@ -33,15 +44,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Log for debugging
+    console.log('Analyzing outfit image...', { 
+      hasBase64: !!imageBase64, 
+      hasUrl: !!imageUrl,
+      base64Length: imageBase64?.length 
+    });
+
     // Fetch existing garments for matching
     const { data: existingGarments } = await supabase
       .from('garments')
       .select('*');
 
-    // Build the image content for OpenAI
+    // Build the image content for OpenAI with correct MIME type
+    const mimeType = imageBase64 ? detectImageMimeType(imageBase64) : 'image/jpeg';
     const imageContent = imageBase64
-      ? { type: 'image_url' as const, image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
-      : { type: 'image_url' as const, image_url: { url: imageUrl } };
+      ? { type: 'image_url' as const, image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: 'high' as const } }
+      : { type: 'image_url' as const, image_url: { url: imageUrl, detail: 'high' as const } };
 
     // Call OpenAI Vision API
     const openai = getOpenAIClient();
@@ -50,31 +69,43 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: `You are a fashion analysis AI. Analyze outfit photos and identify individual garments/clothing items worn.
+          content: `You are a fashion analysis AI specialized in identifying clothing items in photos. Your task is to analyze outfit photos and identify every individual garment/clothing item visible.
 
-For each garment you detect, provide:
-1. A descriptive name (e.g., "Navy blue cotton crew neck t-shirt")
-2. Category: exactly one of: tops, bottoms, dresses, outerwear, shoes, accessories, pijama
-3. Season: exactly one of: mid-season, summer, winter, all-season
-4. A brief description of the item's appearance (color, material, style)
+IMPORTANT INSTRUCTIONS:
+- Look carefully at the ENTIRE image for any clothing items
+- Include items that may be partially visible
+- Be thorough - it's better to identify more items than fewer
+- Consider all types of clothing: shirts, pants, skirts, dresses, jackets, coats, shoes, hats, scarves, jewelry, bags, watches, belts, etc.
 
-Return your response as a JSON array of objects with keys: name, category, season, description.
-Only include actual clothing/accessory items visible in the photo. Do not include the person or background elements.`,
+For EACH garment you detect, provide:
+1. name: A descriptive name (e.g., "Navy blue cotton crew neck t-shirt", "Black leather ankle boots")
+2. category: EXACTLY one of: tops, bottoms, dresses, outerwear, shoes, accessories, pijama
+3. season: EXACTLY one of: mid-season, summer, winter, all-season
+4. description: A brief description of the item's appearance (color, material, style, pattern)
+
+You MUST return a JSON object with a "garments" key containing an array of detected items.
+Example response format: {"garments": [{"name": "...", "category": "...", "season": "...", "description": "..."}]}
+
+If you see a person wearing clothes, identify ALL visible clothing items.
+Even if the image quality is not perfect, do your best to identify the clothing items.`,
         },
         {
           role: 'user',
           content: [
-            { type: 'text', text: 'Analyze this outfit photo and identify all the garments/clothing items visible. Return as JSON array.' },
+            { type: 'text', text: 'Please analyze this outfit photo and identify ALL the garments and clothing items visible. List every piece of clothing you can see, including shoes and accessories. Return your response as a JSON object with a "garments" array.' },
             imageContent,
           ],
         },
       ],
-      max_tokens: 1000,
+      max_tokens: 1500,
       response_format: { type: 'json_object' },
     });
 
     const content = response.choices[0]?.message?.content;
+    console.log('OpenAI Vision response:', content);
+    
     if (!content) {
+      console.error('No content in OpenAI response');
       return NextResponse.json(
         { error: 'No response from AI' },
         { status: 500 }
@@ -85,14 +116,16 @@ Only include actual clothing/accessory items visible in the photo. Do not includ
     let parsedResponse;
     try {
       parsedResponse = JSON.parse(content);
-    } catch {
+      console.log('Parsed response:', JSON.stringify(parsedResponse, null, 2));
+    } catch (parseError) {
+      console.error('Failed to parse AI response:', content, parseError);
       return NextResponse.json(
         { error: 'Failed to parse AI response' },
         { status: 500 }
       );
     }
 
-    // Handle both { garments: [...] } and direct array responses
+    // Handle multiple possible response formats
     const detectedItems: Array<{
       name: string;
       category: string;
@@ -100,7 +133,9 @@ Only include actual clothing/accessory items visible in the photo. Do not includ
       description: string;
     }> = Array.isArray(parsedResponse) 
       ? parsedResponse 
-      : (parsedResponse.garments || parsedResponse.items || []);
+      : (parsedResponse.garments || parsedResponse.items || parsedResponse.clothing || parsedResponse.clothes || []);
+    
+    console.log(`Detected ${detectedItems.length} garments:`, detectedItems.map(i => i.name));
 
     // Match detected garments with existing ones
     const detectedGarments: DetectedGarment[] = detectedItems.map((item) => {

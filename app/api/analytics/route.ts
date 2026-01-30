@@ -43,30 +43,21 @@ export async function GET(request: NextRequest) {
       return garment.use_count <= 1 && createdAt < thresholdDate;
     });
 
-    // Category breakdown
-    const categoryBreakdown = garments.reduce((acc, garment) => {
-      acc[garment.category] = (acc[garment.category] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    // Find most worn category
-    const mostWornCategory = Object.entries(categoryBreakdown)
-      .sort(([, a], [, b]) => b - a)[0]?.[0] || 'N/A';
-
-    // Calculate total wears
-    const totalWears = garments.reduce((sum, g) => sum + g.use_count, 0);
+    // Calculate wardrobe utilization (% of items worn at least once)
+    const wornGarments = garments.filter(g => g.use_count > 0).length;
+    const utilizationPercent = garments.length > 0 
+      ? Math.round((wornGarments / garments.length) * 100) 
+      : 0;
 
     return NextResponse.json({
       stats: {
         totalGarments: garments.length,
         totalOutfits: totalOutfits || 0,
-        totalWears,
-        mostWornCategory,
+        utilizationPercent,
       },
       mostWorn,
       leastWorn,
       donationSuggestions,
-      categoryBreakdown,
     });
   } catch (error) {
     console.error('Analytics error:', error);
