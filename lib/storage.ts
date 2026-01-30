@@ -25,6 +25,31 @@ export async function uploadImage(file: File, folder: 'garments' | 'outfits'): P
 }
 
 /**
+ * Upload a Blob (e.g., cropped image) to Supabase Storage
+ * @param blob - The blob to upload
+ * @param folder - The folder path (e.g., 'garments' or 'outfits')
+ * @param extension - File extension (default: 'jpg')
+ * @returns The storage path of the uploaded image
+ */
+export async function uploadBlob(blob: Blob, folder: 'garments' | 'outfits', extension = 'jpg'): Promise<string> {
+  const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${extension}`;
+
+  const { error } = await supabase.storage
+    .from('images')
+    .upload(fileName, blob, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: `image/${extension}`,
+    });
+
+  if (error) {
+    throw new Error(`Failed to upload image: ${error.message}`);
+  }
+
+  return fileName;
+}
+
+/**
  * Delete an image from Supabase Storage
  * @param path - The path of the image to delete
  */

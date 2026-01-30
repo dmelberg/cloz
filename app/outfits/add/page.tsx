@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import PageHeader from '../../components/PageHeader';
 import ImageUpload from '../../components/ImageUpload';
-import { uploadImage, fileToBase64 } from '@/lib/storage';
+import ImageCropper from '../../components/ImageCropper';
+import { uploadImage, uploadBlob, fileToBase64 } from '@/lib/storage';
 import { getImageUrl, getTodayString } from '@/lib/supabase';
 import type { Garment, Category, Season } from '@/lib/database.types';
 
@@ -30,6 +31,10 @@ export default function AddOutfitPage() {
   const [selectedGarments, setSelectedGarments] = useState<Map<number, Garment | 'new'>>(new Map());
   const [newGarmentData, setNewGarmentData] = useState<Map<number, { name: string; category: Category; season: Season }>>(new Map());
   const [error, setError] = useState<string | null>(null);
+  
+  // Cropping state
+  const [croppingIndex, setCroppingIndex] = useState<number | null>(null);
+  const [croppedImages, setCroppedImages] = useState<Map<number, { blob: Blob; preview: string }>>(new Map());
   
   // Manual selection state
   const [showClosetPicker, setShowClosetPicker] = useState(false);
@@ -159,6 +164,22 @@ export default function AddOutfitPage() {
     }));
   }
 
+  function handleCropComplete(index: number, blob: Blob) {
+    const preview = URL.createObjectURL(blob);
+    setCroppedImages(new Map(croppedImages).set(index, { blob, preview }));
+    setCroppingIndex(null);
+  }
+
+  function removeCroppedImage(index: number) {
+    const newCroppedImages = new Map(croppedImages);
+    const existing = newCroppedImages.get(index);
+    if (existing) {
+      URL.revokeObjectURL(existing.preview);
+    }
+    newCroppedImages.delete(index);
+    setCroppedImages(newCroppedImages);
+  }
+
   async function handleSaveOutfit() {
     if (!imageFile) return;
 
@@ -178,8 +199,14 @@ export default function AddOutfitPage() {
           const data = newGarmentData.get(index);
           if (!data) continue;
 
-          // Use the outfit photo for the new garment (in a real app, you'd crop it)
-          const garmentPhotoUrl = await uploadImage(imageFile, 'garments');
+          // Use cropped image if available, otherwise use full outfit photo
+          let garmentPhotoUrl: string;
+          const croppedImage = croppedImages.get(index);
+          if (croppedImage) {
+            garmentPhotoUrl = await uploadBlob(croppedImage.blob, 'garments');
+          } else {
+            garmentPhotoUrl = await uploadImage(imageFile, 'garments');
+          }
 
           const response = await fetch('/api/garments', {
             method: 'POST',
@@ -381,6 +408,68 @@ export default function AddOutfitPage() {
                       {/* New garment form */}
                       {isNew && (
                         <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 space-y-3">
+                          {/* Crop image section */}
+                          <div className="flex items-center gap-3">
+                            {croppedImages.get(index) ? (
+                              <>
+                                <div className="w-16 h-16 rounded-lg overflow-hidden relative bg-zinc-100 dark:bg-zinc-800 flex-shrink-0">
+                                  <Image
+                                    src={croppedImages.get(index)!.preview}
+                                    alt="Cropped preview"
+                                    fill
+                                    className="object-cover"
+                                  />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                  <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+                                    Image cropped
+                                  </p>
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => setCroppingIndex(index)}
+                                      className="text-xs text-violet-600 dark:text-violet-400"
+                                    >
+                                      Re-crop
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeCroppedImage(index)}
+                                      className="text-xs text-zinc-500 dark:text-zinc-400"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-16 h-16 rounded-lg overflow-hidden relative bg-zinc-100 dark:bg-zinc-800 flex-shrink-0">
+                                  {imagePreview && (
+                                    <Image
+                                      src={imagePreview}
+                                      alt="Full outfit"
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">
+                                    Using full outfit photo
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setCroppingIndex(index)}
+                                    className="px-3 py-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-sm font-medium"
+                                  >
+                                    Crop to this garment
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
                           <input
                             type="text"
                             value={newGarmentData.get(index)?.name || garment.name}
@@ -576,6 +665,16 @@ export default function AddOutfitPage() {
           </div>
         )}
       </div>
+
+      {/* Image Cropper Modal */}
+      {croppingIndex !== null && imagePreview && (
+        <ImageCropper
+          imageSrc={imagePreview}
+          onCropComplete={(blob) => handleCropComplete(croppingIndex, blob)}
+          onCancel={() => setCroppingIndex(null)}
+          aspectRatio={1}
+        />
+      )}
     </div>
   );
 }

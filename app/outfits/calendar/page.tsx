@@ -14,8 +14,10 @@ interface OutfitWithGarments extends Outfit {
 export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [outfits, setOutfits] = useState<Outfit[]>([]);
-  const [selectedOutfit, setSelectedOutfit] = useState<OutfitWithGarments | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedOutfits, setSelectedOutfits] = useState<OutfitWithGarments[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   const fetchOutfits = useCallback(async () => {
     setLoading(true);
@@ -38,21 +40,29 @@ export default function CalendarPage() {
   }, [fetchOutfits]);
 
   async function handleDayClick(date: Date) {
-    const outfit = outfits.find(o => isSameDay(parseLocalDate(o.worn_date), date));
-    if (outfit) {
-      // Fetch outfit details with garments
-      const response = await fetch(`/api/outfits/${outfit.id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setSelectedOutfit(data);
+    const dayOutfits = getOutfitsForDate(date);
+    if (dayOutfits.length > 0) {
+      setSelectedDate(date);
+      setLoadingDetails(true);
+      // Fetch all outfit details with garments
+      const outfitDetails: OutfitWithGarments[] = [];
+      for (const outfit of dayOutfits) {
+        const response = await fetch(`/api/outfits/${outfit.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          outfitDetails.push(data);
+        }
       }
+      setSelectedOutfits(outfitDetails);
+      setLoadingDetails(false);
     } else {
-      setSelectedOutfit(null);
+      setSelectedDate(null);
+      setSelectedOutfits([]);
     }
   }
 
-  function getOutfitForDate(date: Date): Outfit | undefined {
-    return outfits.find(o => isSameDay(parseLocalDate(o.worn_date), date));
+  function getOutfitsForDate(date: Date): Outfit[] {
+    return outfits.filter(o => isSameDay(parseLocalDate(o.worn_date), date));
   }
 
   const monthStart = startOfMonth(currentMonth);
@@ -109,7 +119,8 @@ export default function CalendarPage() {
           {allDays.map((day, index) => {
             const isCurrentMonth = isSameMonth(day, currentMonth);
             const isToday = isSameDay(day, new Date());
-            const outfit = isCurrentMonth ? getOutfitForDate(day) : undefined;
+            const dayOutfits = isCurrentMonth ? getOutfitsForDate(day) : [];
+            const outfitCount = dayOutfits.length;
 
             return (
               <button
@@ -120,16 +131,26 @@ export default function CalendarPage() {
                   isCurrentMonth
                     ? 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800'
                     : 'bg-zinc-100 dark:bg-zinc-900/50'
-                } ${isToday ? 'ring-2 ring-violet-500' : ''}`}
+                } ${isToday ? 'ring-2 ring-violet-500' : ''} ${
+                  selectedDate && isSameDay(day, selectedDate) ? 'ring-2 ring-violet-400' : ''
+                }`}
               >
-                {outfit ? (
-                  <Image
-                    src={getImageUrl(outfit.photo_url)}
-                    alt={`Outfit on ${format(day, 'MMM d')}`}
-                    fill
-                    className="object-cover"
-                    sizes="50px"
-                  />
+                {outfitCount > 0 ? (
+                  <>
+                    <Image
+                      src={getImageUrl(dayOutfits[0].photo_url)}
+                      alt={`Outfit on ${format(day, 'MMM d')}`}
+                      fill
+                      className="object-cover"
+                      sizes="50px"
+                    />
+                    {/* Show badge for multiple outfits */}
+                    {outfitCount > 1 && (
+                      <div className="absolute top-0.5 right-0.5 bg-violet-600 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                        {outfitCount}
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <span className={`absolute inset-0 flex items-center justify-center text-sm ${
                     isCurrentMonth
@@ -149,58 +170,83 @@ export default function CalendarPage() {
           <div className="text-center py-4 text-zinc-500">Loading...</div>
         )}
 
-        {/* Selected Outfit Detail */}
-        {selectedOutfit && (
-          <div className="mt-6 bg-white dark:bg-zinc-900 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
-            <div className="aspect-video relative">
-              <Image
-                src={getImageUrl(selectedOutfit.photo_url)}
-                alt={`Outfit on ${format(parseLocalDate(selectedOutfit.worn_date), 'MMMM d, yyyy')}`}
-                fill
-                className="object-cover"
-              />
+        {/* Selected Outfits Detail */}
+        {selectedDate && (
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-zinc-900 dark:text-zinc-100">
+                {format(selectedDate, 'EEEE, MMMM d, yyyy')}
+                {selectedOutfits.length > 1 && (
+                  <span className="ml-2 text-sm text-zinc-500">
+                    ({selectedOutfits.length} outfits)
+                  </span>
+                )}
+              </h3>
+              <button
+                onClick={() => { setSelectedDate(null); setSelectedOutfits([]); }}
+                className="p-1 text-zinc-400"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-medium text-zinc-900 dark:text-zinc-100">
-                  {format(parseLocalDate(selectedOutfit.worn_date), 'EEEE, MMMM d, yyyy')}
-                </h3>
-                <button
-                  onClick={() => setSelectedOutfit(null)}
-                  className="p-1 text-zinc-400"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
 
-              {selectedOutfit.garments.length > 0 && (
-                <div>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">
-                    Garments worn:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedOutfit.garments.map(garment => (
-                      <div
-                        key={garment.id}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full"
-                      >
-                        <div className="w-6 h-6 rounded-full overflow-hidden relative">
-                          <Image
-                            src={getImageUrl(garment.photo_url)}
-                            alt={garment.name}
-                            fill
-                            className="object-cover"
-                          />
+            {loadingDetails ? (
+              <div className="text-center py-4">
+                <div className="w-8 h-8 mx-auto border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              selectedOutfits.map((outfit, index) => (
+                <div 
+                  key={outfit.id}
+                  className="bg-white dark:bg-zinc-900 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800"
+                >
+                  {selectedOutfits.length > 1 && (
+                    <div className="px-4 pt-3 pb-1">
+                      <span className="text-xs font-medium text-violet-600 dark:text-violet-400">
+                        Outfit {index + 1}
+                      </span>
+                    </div>
+                  )}
+                  <div className="aspect-video relative">
+                    <Image
+                      src={getImageUrl(outfit.photo_url)}
+                      alt={`Outfit ${index + 1} on ${format(selectedDate, 'MMMM d, yyyy')}`}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="p-4">
+                    {outfit.garments.length > 0 && (
+                      <div>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">
+                          Garments worn:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {outfit.garments.map(garment => (
+                            <div
+                              key={garment.id}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full"
+                            >
+                              <div className="w-6 h-6 rounded-full overflow-hidden relative">
+                                <Image
+                                  src={getImageUrl(garment.photo_url)}
+                                  alt={garment.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
+                              <span className="text-sm text-zinc-700 dark:text-zinc-300">{garment.name}</span>
+                            </div>
+                          ))}
                         </div>
-                        <span className="text-sm text-zinc-700 dark:text-zinc-300">{garment.name}</span>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
+              ))
+            )}
           </div>
         )}
 
