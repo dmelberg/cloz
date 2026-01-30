@@ -1,13 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import PageHeader from '../components/PageHeader';
+import { supabase } from '@/lib/supabase';
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [thresholdMonths, setThresholdMonths] = useState(6);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Get current user
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserEmail(user.email || null);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     // Fetch current preferences
@@ -39,6 +53,19 @@ export default function SettingsPage() {
       console.error('Failed to save preferences:', error);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await supabase.auth.signOut();
+      router.push('/login');
+      router.refresh();
+    } catch (error) {
+      console.error('Failed to log out:', error);
+    } finally {
+      setLoggingOut(false);
     }
   }
 
@@ -107,6 +134,25 @@ export default function SettingsPage() {
               <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
                 Your data is stored securely in Supabase. Photos are stored in Supabase Storage.
               </p>
+            </div>
+
+            {/* Account Section */}
+            <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-800">
+              <h3 className="font-medium text-zinc-900 dark:text-zinc-100 mb-2">
+                Account
+              </h3>
+              {userEmail && (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                  Signed in as <span className="font-medium text-zinc-700 dark:text-zinc-300">{userEmail}</span>
+                </p>
+              )}
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="w-full py-3 rounded-lg font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
+              >
+                {loggingOut ? 'Signing out...' : 'Sign Out'}
+              </button>
             </div>
 
             {/* Save Button */}

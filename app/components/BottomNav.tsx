@@ -56,6 +56,11 @@ const navItems = [
 export default function BottomNav() {
   const pathname = usePathname();
 
+  // Hide navigation on auth pages
+  if (pathname === '/login' || pathname === '/signup') {
+    return null;
+  }
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 pb-safe z-50">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto">

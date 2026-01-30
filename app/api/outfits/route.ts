@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-server';
 import type { Outfit, Garment } from '@/lib/database.types';
 
 // GET /api/outfits - Get all outfits with optional date filtering
 export async function GET(request: NextRequest) {
+  const supabase = await createClient();
+  
+  // Get authenticated user
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const month = searchParams.get('month'); // YYYY-MM format
   const date = searchParams.get('date'); // YYYY-MM-DD format
@@ -11,6 +19,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('outfits')
     .select('*')
+    .eq('user_id', user.id)
     .order('worn_date', { ascending: false });
 
   if (date) {
@@ -33,6 +42,14 @@ export async function GET(request: NextRequest) {
 
 // POST /api/outfits - Create a new outfit with linked garments
 export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+  
+  // Get authenticated user
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const body = await request.json() as {
     photo_url: string;
     worn_date: string;
@@ -50,7 +67,7 @@ export async function POST(request: NextRequest) {
   // Create outfit
   const { data: outfit, error: outfitError } = await supabase
     .from('outfits')
-    .insert({ photo_url, worn_date })
+    .insert({ photo_url, worn_date, user_id: user.id })
     .select()
     .single();
 
@@ -76,12 +93,13 @@ export async function POST(request: NextRequest) {
       console.error('Failed to link garments:', linkError);
     }
 
-    // Increment use_count for each garment
+    // Increment use_count for each garment (only user's garments)
     for (const garment_id of garment_ids) {
       const { data: garment } = await supabase
         .from('garments')
         .select('use_count')
         .eq('id', garment_id)
+        .eq('user_id', user.id)
         .single();
 
       const garmentData = garment as Garment | null;
@@ -89,7 +107,8 @@ export async function POST(request: NextRequest) {
         await supabase
           .from('garments')
           .update({ use_count: garmentData.use_count + 1 })
-          .eq('id', garment_id);
+          .eq('id', garment_id)
+          .eq('user_id', user.id);
       }
     }
   }

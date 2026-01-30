@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-server';
 import type { Outfit, Garment, OutfitGarment } from '@/lib/database.types';
 
 // GET /api/outfits/[id] - Get a single outfit with its garments
@@ -7,6 +7,14 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabase = await createClient();
+  
+  // Get authenticated user
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { id } = await params;
 
   // Get outfit
@@ -14,6 +22,7 @@ export async function GET(
     .from('outfits')
     .select('*')
     .eq('id', id)
+    .eq('user_id', user.id)
     .single();
 
   if (outfitError) {
@@ -36,7 +45,8 @@ export async function GET(
     const { data } = await supabase
       .from('garments')
       .select('*')
-      .in('id', garmentIds);
+      .in('id', garmentIds)
+      .eq('user_id', user.id);
     garments = (data || []) as Garment[];
   }
 
@@ -51,7 +61,27 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabase = await createClient();
+  
+  // Get authenticated user
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { id } = await params;
+
+  // Verify the outfit belongs to user
+  const { data: outfit } = await supabase
+    .from('outfits')
+    .select('id')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .single();
+
+  if (!outfit) {
+    return NextResponse.json({ error: 'Outfit not found' }, { status: 404 });
+  }
 
   // Get linked garments to decrement use counts
   const { data: links } = await supabase
@@ -67,6 +97,7 @@ export async function DELETE(
       .from('garments')
       .select('use_count')
       .eq('id', link.garment_id)
+      .eq('user_id', user.id)
       .single();
 
     const garmentData = garment as Pick<Garment, 'use_count'> | null;
@@ -74,7 +105,8 @@ export async function DELETE(
       await supabase
         .from('garments')
         .update({ use_count: garmentData.use_count - 1 })
-        .eq('id', link.garment_id);
+        .eq('id', link.garment_id)
+        .eq('user_id', user.id);
     }
   }
 
@@ -82,7 +114,8 @@ export async function DELETE(
   const { error } = await supabase
     .from('outfits')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

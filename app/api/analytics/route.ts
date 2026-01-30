@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-server';
 import type { Garment } from '@/lib/database.types';
 
 // GET /api/analytics - Get analytics data for the home page
 export async function GET(request: NextRequest) {
+  const supabase = await createClient();
+  
+  // Get authenticated user
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const thresholdMonths = parseInt(searchParams.get('thresholdMonths') || '6', 10);
 
   try {
-    // Get all garments
+    // Get all garments for this user
     const { data: garmentsData, error: garmentsError } = await supabase
       .from('garments')
       .select('*')
+      .eq('user_id', user.id)
       .order('use_count', { ascending: false });
 
     if (garmentsError) {
@@ -20,10 +29,11 @@ export async function GET(request: NextRequest) {
 
     const garments = (garmentsData || []) as Garment[];
 
-    // Get all outfits count
+    // Get all outfits count for this user
     const { count: totalOutfits } = await supabase
       .from('outfits')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id);
 
     // Calculate donation threshold date
     const thresholdDate = new Date();

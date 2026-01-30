@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-server';
 import type { Category, Season, Garment } from '@/lib/database.types';
 
 // GET /api/garments - Get all garments with optional filters
 export async function GET(request: NextRequest) {
+  const supabase = await createClient();
+  
+  // Get authenticated user
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const category = searchParams.get('category') as Category | null;
   const season = searchParams.get('season') as Season | null;
@@ -12,7 +20,8 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('garments')
-    .select('*');
+    .select('*')
+    .eq('user_id', user.id);
 
   if (category) {
     query = query.eq('category', category);
@@ -35,6 +44,14 @@ export async function GET(request: NextRequest) {
 
 // POST /api/garments - Create a new garment
 export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+  
+  // Get authenticated user
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const body = await request.json();
   
   const { name, photo_url, quantity = 1, category, season } = body as {
@@ -61,6 +78,7 @@ export async function POST(request: NextRequest) {
       use_count: 0,
       category,
       season,
+      user_id: user.id,
     })
     .select()
     .single();

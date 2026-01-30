@@ -10,6 +10,7 @@ export interface Garment {
   category: Category;
   season: Season;
   created_at: string;
+  user_id: string;
 }
 
 export interface Outfit {
@@ -17,6 +18,7 @@ export interface Outfit {
   photo_url: string;
   worn_date: string;
   created_at: string;
+  user_id: string;
 }
 
 export interface OutfitGarment {
@@ -28,6 +30,7 @@ export interface OutfitGarment {
 export interface Preferences {
   id: string;
   donation_threshold_months: number;
+  user_id: string;
 }
 
 // Supabase Database schema type
@@ -45,6 +48,7 @@ export type Database = {
           category: Category;
           season: Season;
           created_at?: string;
+          user_id: string;
         };
         Update: {
           id?: string;
@@ -55,6 +59,7 @@ export type Database = {
           category?: Category;
           season?: Season;
           created_at?: string;
+          user_id?: string;
         };
         Relationships: [];
       };
@@ -65,12 +70,14 @@ export type Database = {
           photo_url: string;
           worn_date: string;
           created_at?: string;
+          user_id: string;
         };
         Update: {
           id?: string;
           photo_url?: string;
           worn_date?: string;
           created_at?: string;
+          user_id?: string;
         };
         Relationships: [];
       };
@@ -93,10 +100,12 @@ export type Database = {
         Insert: {
           id?: string;
           donation_threshold_months?: number;
+          user_id: string;
         };
         Update: {
           id?: string;
           donation_threshold_months?: number;
+          user_id?: string;
         };
         Relationships: [];
       };
