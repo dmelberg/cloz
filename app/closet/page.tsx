@@ -4,10 +4,33 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import PageHeader from '../components/PageHeader';
 import GarmentCard from '../components/GarmentCard';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Shirt, LayoutGrid } from 'lucide-react';
 import type { Garment, Category, Season } from '@/lib/database.types';
 
 const categories: (Category | 'all')[] = ['all', 'tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'accessories', 'pijama'];
 const seasons: (Season | 'all')[] = ['all', 'mid-season', 'summer', 'winter', 'all-season'];
+
+const categoryLabels: Record<Category | 'all', string> = {
+  all: 'All',
+  tops: 'Tops',
+  bottoms: 'Bottoms',
+  dresses: 'Dresses',
+  outerwear: 'Outerwear',
+  shoes: 'Shoes',
+  accessories: 'Accessories',
+  pijama: 'Pijama',
+};
+
+const seasonLabels: Record<Season | 'all', string> = {
+  all: 'All Seasons',
+  'mid-season': 'Mid-season',
+  summer: 'Summer',
+  winter: 'Winter',
+  'all-season': 'All-season',
+};
 
 export default function ClosetPage() {
   const [garments, setGarments] = useState<Garment[]>([]);
@@ -39,93 +62,80 @@ export default function ClosetPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-background">
       <PageHeader
         title="My Closet"
         rightAction={
-          <Link
-            href="/closet/add"
-            className="p-2 text-violet-600 dark:text-violet-400"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+          <Link href="/closet/add">
+            <Button variant="ghost" size="icon" className="text-primary">
+              <Plus className="size-6" />
+            </Button>
           </Link>
         }
       />
 
       {/* Filters */}
-      <div className="px-4 py-3 space-y-3 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
+      <div className="px-4 py-3 space-y-3 bg-card border-b border-border max-w-lg mx-auto">
         {/* Category Filter */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
-                selectedCategory === category
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
-              }`}
-            >
-              {category === 'all' ? 'All' : category.charAt(0).toUpperCase() + category.slice(1)}
-            </button>
-          ))}
-        </div>
+        <Tabs value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as Category | 'all')}>
+          <TabsList className="w-full justify-start overflow-x-auto no-scrollbar pb-1">
+            {categories.map((category) => (
+              <TabsTrigger key={category} value={category}>
+                {categoryLabels[category]}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         {/* Season Filter */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {seasons.map((season) => (
-            <button
-              key={season}
-              onClick={() => setSelectedSeason(season)}
-              className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
-                selectedSeason === season
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
-              }`}
-            >
-              {season === 'all' ? 'All Seasons' : season.charAt(0).toUpperCase() + season.slice(1)}
-            </button>
-          ))}
-        </div>
+        <Tabs value={selectedSeason} onValueChange={(v) => setSelectedSeason(v as Season | 'all')}>
+          <TabsList className="w-full justify-start overflow-x-auto no-scrollbar pb-1">
+            {seasons.map((season) => (
+              <TabsTrigger key={season} value={season}>
+                {seasonLabels[season]}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Garments Grid */}
-      <div className="p-4">
+      <div className="p-4 max-w-lg mx-auto">
         {loading ? (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="masonry-grid">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl overflow-hidden animate-pulse">
-                <div className="aspect-square bg-zinc-200 dark:bg-zinc-800" />
+              <div key={i} className="rounded-2xl overflow-hidden bg-card border border-border">
+                <Skeleton className="aspect-[3/4] rounded-none" />
                 <div className="p-3 space-y-2">
-                  <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-3/4" />
-                  <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded w-1/2" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <div className="flex justify-between">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         ) : garments.length === 0 ? (
-          <div className="text-center py-12">
-            <svg className="w-16 h-16 mx-auto text-zinc-300 dark:text-zinc-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-            <h3 className="mt-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">No garments yet</h3>
-            <p className="mt-1 text-zinc-500 dark:text-zinc-400">Start by adding your first garment</p>
-            <Link
-              href="/closet/add"
-              className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-violet-600 text-white rounded-full"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Garment
-            </Link>
+          <div className="text-center py-16 px-4">
+            <div className="inline-flex items-center justify-center size-20 rounded-full bg-muted mb-4">
+              <Shirt className="size-10 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground">No garments yet</h3>
+            <p className="mt-1 text-muted-foreground text-sm max-w-xs mx-auto">
+              Start building your digital wardrobe by adding your first garment
+            </p>
+            <Button asChild className="mt-6 rounded-full" size="lg">
+              <Link href="/closet/add">
+                <Plus className="size-5 mr-2" />
+                Add Garment
+              </Link>
+            </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
-            {garments.map((garment) => (
-              <GarmentCard key={garment.id} garment={garment} />
+          <div className="masonry-grid">
+            {garments.map((garment, index) => (
+              <GarmentCard key={garment.id} garment={garment} index={index} />
             ))}
           </div>
         )}

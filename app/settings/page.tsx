@@ -4,18 +4,23 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PageHeader from '../components/PageHeader';
 import { supabase } from '@/lib/supabase';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+import { LogOut, Loader2, Check, Info, Database } from 'lucide-react';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [thresholdMonths, setThresholdMonths] = useState(6);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get current user
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUserEmail(user.email || null);
@@ -24,7 +29,6 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    // Fetch current preferences
     fetch('/api/preferences')
       .then(res => res.json())
       .then(data => {
@@ -36,7 +40,6 @@ export default function SettingsPage() {
 
   async function handleSave() {
     setSaving(true);
-    setSaved(false);
 
     try {
       const response = await fetch('/api/preferences', {
@@ -46,11 +49,19 @@ export default function SettingsPage() {
       });
 
       if (response.ok) {
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
+        toast({
+          title: 'Settings saved',
+          description: 'Your preferences have been updated.',
+          variant: 'success',
+        });
       }
     } catch (error) {
       console.error('Failed to save preferences:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save settings. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setSaving(false);
     }
@@ -70,103 +81,140 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-background">
       <PageHeader title="Settings" />
 
-      <div className="p-4 max-w-lg mx-auto space-y-6">
+      <div className="p-4 max-w-lg mx-auto space-y-4">
         {loading ? (
           <div className="space-y-4">
-            <div className="h-32 bg-white dark:bg-zinc-900 rounded-xl animate-pulse" />
+            {[...Array(3)].map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-6 space-y-4">
+                  <Skeleton className="h-5 w-1/3" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : (
           <>
             {/* Donation Threshold Setting */}
-            <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-800">
-              <h3 className="font-medium text-zinc-900 dark:text-zinc-100 mb-2">
-                Donation Suggestions
-              </h3>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-                Suggest giving away garments that haven&apos;t been worn after a certain period of time.
-              </p>
-
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                Time threshold (months)
-              </label>
-              <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min={1}
-                  max={24}
-                  value={thresholdMonths}
-                  onChange={(e) => setThresholdMonths(parseInt(e.target.value))}
-                  className="flex-1 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-violet-600"
-                />
-                <span className="w-16 text-center font-semibold text-zinc-900 dark:text-zinc-100">
-                  {thresholdMonths} {thresholdMonths === 1 ? 'month' : 'months'}
-                </span>
-              </div>
-              <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
-                Garments with 0-1 wears added more than {thresholdMonths} months ago will be suggested for donation.
-              </p>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Donation Suggestions</CardTitle>
+                <CardDescription>
+                  Suggest giving away garments that haven&apos;t been worn after a certain period of time.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Time threshold (months)</Label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="range"
+                      min={1}
+                      max={24}
+                      value={thresholdMonths}
+                      onChange={(e) => setThresholdMonths(parseInt(e.target.value))}
+                      className="flex-1 h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                    <span className="w-20 text-center font-semibold text-foreground tabular-nums">
+                      {thresholdMonths} {thresholdMonths === 1 ? 'month' : 'months'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Garments with 0-1 wears added more than {thresholdMonths} months ago will be suggested for donation.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* About Section */}
-            <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-800">
-              <h3 className="font-medium text-zinc-900 dark:text-zinc-100 mb-2">
-                About Cloz
-              </h3>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Cloz helps you track your wardrobe and discover which clothes you actually wear. 
-                By logging your outfits, you can make informed decisions about what to keep and what to give away.
-              </p>
-              <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                  Version 1.0.0
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Info className="size-4 text-muted-foreground" />
+                  <CardTitle className="text-base">About Cloz</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Cloz helps you track your wardrobe and discover which clothes you actually wear. 
+                  By logging your outfits, you can make informed decisions about what to keep and what to give away.
                 </p>
-              </div>
-            </div>
+                <div className="mt-4 pt-4 border-t border-border">
+                  <p className="text-xs text-muted-foreground">Version 1.0.0</p>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Data Management */}
-            <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-800">
-              <h3 className="font-medium text-zinc-900 dark:text-zinc-100 mb-2">
-                Data Management
-              </h3>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-                Your data is stored securely in Supabase. Photos are stored in Supabase Storage.
-              </p>
-            </div>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Database className="size-4 text-muted-foreground" />
+                  <CardTitle className="text-base">Data Management</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Your data is stored securely in Supabase. Photos are stored in Supabase Storage.
+                </p>
+              </CardContent>
+            </Card>
 
             {/* Account Section */}
-            <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-800">
-              <h3 className="font-medium text-zinc-900 dark:text-zinc-100 mb-2">
-                Account
-              </h3>
-              {userEmail && (
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-                  Signed in as <span className="font-medium text-zinc-700 dark:text-zinc-300">{userEmail}</span>
-                </p>
-              )}
-              <button
-                onClick={handleLogout}
-                disabled={loggingOut}
-                className="w-full py-3 rounded-lg font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
-              >
-                {loggingOut ? 'Signing out...' : 'Sign Out'}
-              </button>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Account</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {userEmail && (
+                  <p className="text-sm text-muted-foreground">
+                    Signed in as <span className="font-medium text-foreground">{userEmail}</span>
+                  </p>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="w-full"
+                >
+                  {loggingOut ? (
+                    <>
+                      <Loader2 className="size-4 mr-2 animate-spin" />
+                      Signing out...
+                    </>
+                  ) : (
+                    <>
+                      <LogOut className="size-4 mr-2" />
+                      Sign Out
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
 
             {/* Save Button */}
-            <button
+            <Button
               onClick={handleSave}
               disabled={saving}
-              className={`w-full py-4 rounded-xl font-medium transition-all ${
-                saved
-                  ? 'bg-green-500 text-white'
-                  : 'bg-violet-600 text-white'
-              } disabled:opacity-50`}
+              className="w-full"
+              size="lg"
             >
-              {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Settings'}
-            </button>
+              {saving ? (
+                <>
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="size-4 mr-2" />
+                  Save Settings
+                </>
+              )}
+            </Button>
           </>
         )}
       </div>

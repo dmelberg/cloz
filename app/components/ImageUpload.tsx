@@ -68,8 +68,8 @@ export default function ImageUpload({ onImageSelect, previewUrl, className = '' 
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         onChange={handleFileChange}
+        className="hidden"
       />
       <button
         type="button"

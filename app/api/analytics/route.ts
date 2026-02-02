@@ -39,13 +39,13 @@ export async function GET(request: NextRequest) {
     const thresholdDate = new Date();
     thresholdDate.setMonth(thresholdDate.getMonth() - thresholdMonths);
 
-    // Most worn garments (top 10)
-    const mostWorn = garments.slice(0, 10);
+    // Most worn garments (top 5)
+    const mostWorn = garments.slice(0, 5);
 
-    // Least worn garments (bottom 10)
+    // Least worn garments (bottom 5)
     const leastWorn = [...garments]
       .sort((a, b) => a.use_count - b.use_count)
-      .slice(0, 10);
+      .slice(0, 5);
 
     // Donation suggestions: garments with 0-1 uses AND created before threshold
     const donationSuggestions = garments.filter(garment => {

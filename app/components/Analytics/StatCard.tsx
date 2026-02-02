@@ -1,19 +1,25 @@
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+
 interface StatCardProps {
   label: string;
   value: string | number;
   icon: React.ReactNode;
+  className?: string;
 }
 
-export default function StatCard({ label, value, icon }: StatCardProps) {
+export default function StatCard({ label, value, icon, className }: StatCardProps) {
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl p-3 border border-zinc-200 dark:border-zinc-800">
-      <div className="flex flex-col items-center text-center gap-1">
-        <p className="text-xl font-bold text-zinc-900 dark:text-zinc-100">{value}</p>
-        <div className="flex items-center gap-1 text-zinc-500 dark:text-zinc-400">
-          <span className="w-3 h-3 [&>svg]:w-3 [&>svg]:h-3">{icon}</span>
-          <p className="text-xs truncate">{label}</p>
+    <Card className={cn("overflow-hidden", className)}>
+      <CardContent className="p-3">
+        <div className="flex flex-col items-center text-center gap-1">
+          <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-1">
+            <span className="size-4 [&>svg]:size-4">{icon}</span>
+          </div>
+          <p className="text-xl font-bold text-foreground tabular-nums">{value}</p>
+          <p className="text-xs text-muted-foreground truncate">{label}</p>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

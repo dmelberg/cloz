@@ -5,6 +5,10 @@ import Link from 'next/link';
 import PageHeader from './components/PageHeader';
 import StatCard from './components/Analytics/StatCard';
 import GarmentList from './components/Analytics/GarmentList';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent } from '@/components/ui/card';
+import { Shirt, Calendar, Target, Plus } from 'lucide-react';
 import type { Garment } from '@/lib/database.types';
 
 interface AnalyticsData {
@@ -38,7 +42,6 @@ export default function HomePage() {
   }, [thresholdMonths]);
 
   useEffect(() => {
-    // Fetch preferences first
     fetch('/api/preferences')
       .then(res => res.json())
       .then(prefs => {
@@ -52,14 +55,44 @@ export default function HomePage() {
   }, [fetchAnalytics]);
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <PageHeader title="Cloz" />
+    <div className="min-h-screen bg-background">
+      <PageHeader title="Home" />
 
       <div className="p-4 max-w-lg mx-auto space-y-6">
         {loading ? (
           <div className="space-y-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-white dark:bg-zinc-900 rounded-xl animate-pulse" />
+            <div className="grid grid-cols-3 gap-3">
+              {[...Array(3)].map((_, i) => (
+                <Card key={i}>
+                  <CardContent className="p-3">
+                    <div className="flex flex-col items-center gap-2">
+                      <Skeleton className="size-8 rounded-full" />
+                      <Skeleton className="h-6 w-12" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            {[...Array(3)].map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-0">
+                  <Skeleton className="h-12 w-full rounded-none" />
+                  {[...Array(3)].map((_, j) => (
+                    <div key={j} className="flex items-center gap-3 px-4 py-3 border-t border-border">
+                      <Skeleton className="size-12 rounded-xl" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </div>
+                      <div className="space-y-1">
+                        <Skeleton className="h-6 w-8 ml-auto" />
+                        <Skeleton className="h-3 w-10" />
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
             ))}
           </div>
         ) : data ? (
@@ -69,29 +102,17 @@ export default function HomePage() {
               <StatCard
                 label="Garments"
                 value={data.stats.totalGarments}
-                icon={
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  </svg>
-                }
+                icon={<Shirt className="size-4" />}
               />
               <StatCard
                 label="Outfits"
                 value={data.stats.totalOutfits}
-                icon={
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                }
+                icon={<Calendar className="size-4" />}
               />
               <StatCard
                 label="Utilization"
                 value={`${data.stats.utilizationPercent}%`}
-                icon={
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
+                icon={<Target className="size-4" />}
               />
             </div>
 
@@ -107,41 +128,43 @@ export default function HomePage() {
 
             {/* Most Worn */}
             <GarmentList
-              title="Most Worn (Top 10)"
+              title="Most Worn (Top 5)"
               garments={data.mostWorn}
               emptyMessage="Start logging outfits to see stats"
             />
 
             {/* Least Worn */}
             <GarmentList
-              title="Least Worn (Bottom 10)"
+              title="Least Worn (Bottom 5)"
               garments={data.leastWorn}
               emptyMessage="Add garments to your closet"
             />
 
             {/* Empty State */}
             {data.stats.totalGarments === 0 && (
-              <div className="text-center py-8">
-                <svg className="w-16 h-16 mx-auto text-zinc-300 dark:text-zinc-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-                <h3 className="mt-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">Welcome to Cloz!</h3>
-                <p className="mt-1 text-zinc-500 dark:text-zinc-400">Start by adding garments to your closet</p>
-                <Link
-                  href="/closet/add"
-                  className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-violet-600 text-white rounded-full"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add Your First Garment
-                </Link>
+              <div className="text-center py-12 px-4">
+                <div className="inline-flex items-center justify-center size-20 rounded-full bg-muted mb-4">
+                  <Shirt className="size-10 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground">Welcome to Cloz!</h3>
+                <p className="mt-1 text-muted-foreground text-sm max-w-xs mx-auto">
+                  Start building your digital wardrobe by adding your first garment
+                </p>
+                <Button asChild className="mt-6 rounded-full" size="lg">
+                  <Link href="/closet/add">
+                    <Plus className="size-5 mr-2" />
+                    Add Your First Garment
+                  </Link>
+                </Button>
               </div>
             )}
           </>
         ) : (
-          <div className="text-center py-8 text-zinc-500">
-            Failed to load analytics
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Failed to load analytics</p>
+            <Button variant="outline" className="mt-4" onClick={() => fetchAnalytics()}>
+              Try Again
+            </Button>
           </div>
         )}
       </div>

@@ -4,10 +4,32 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ImageUpload from './ImageUpload';
 import { uploadImage } from '@/lib/storage';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import { Minus, Plus, Loader2 } from 'lucide-react';
 import type { Category, Season } from '@/lib/database.types';
 
 const categories: Category[] = ['tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'accessories', 'pijama'];
 const seasons: Season[] = ['mid-season', 'summer', 'winter', 'all-season'];
+
+const categoryLabels: Record<Category, string> = {
+  tops: 'Tops',
+  bottoms: 'Bottoms',
+  dresses: 'Dresses',
+  outerwear: 'Outerwear',
+  shoes: 'Shoes',
+  accessories: 'Accessories',
+  pijama: 'Pijama',
+};
+
+const seasonLabels: Record<Season, string> = {
+  'mid-season': 'Mid-season',
+  summer: 'Summer',
+  winter: 'Winter',
+  'all-season': 'All-season',
+};
 
 interface GarmentFormProps {
   initialData?: {
@@ -90,107 +112,113 @@ export default function GarmentForm({ initialData, onSuccess }: GarmentFormProps
       />
 
       {/* Name Input */}
-      <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-          Name
-        </label>
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="name">Name</Label>
+        <Input
+          id="name"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Blue cotton t-shirt"
           required
-          className="w-full px-4 py-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
         />
       </div>
 
       {/* Category */}
-      <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-          Category
-        </label>
+      <div className="space-y-2">
+        <Label>Category</Label>
         <div className="grid grid-cols-3 gap-2">
           {categories.map((cat) => (
             <button
               key={cat}
               type="button"
               onClick={() => setCategory(cat)}
-              className={`px-3 py-2 rounded-lg text-sm capitalize transition-colors ${
+              className={cn(
+                "px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
                 category === cat
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300'
-              }`}
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              )}
             >
-              {cat}
+              {categoryLabels[cat]}
             </button>
           ))}
         </div>
       </div>
 
       {/* Season */}
-      <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-          Season
-        </label>
+      <div className="space-y-2">
+        <Label>Season</Label>
         <div className="grid grid-cols-2 gap-2">
           {seasons.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => setSeason(s)}
-              className={`px-3 py-2 rounded-lg text-sm capitalize transition-colors ${
+              className={cn(
+                "px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
                 season === s
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300'
-              }`}
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              )}
             >
-              {s}
+              {seasonLabels[s]}
             </button>
           ))}
         </div>
       </div>
 
       {/* Quantity */}
-      <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-          Quantity
-        </label>
+      <div className="space-y-2">
+        <Label>Quantity</Label>
         <div className="flex items-center gap-4">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="icon"
+            className="size-12 rounded-full"
             onClick={() => setQuantity(Math.max(1, quantity - 1))}
-            className="w-12 h-12 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center text-xl"
           >
-            −
-          </button>
-          <span className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100 w-12 text-center">
+            <Minus className="size-4" />
+          </Button>
+          <span className="text-2xl font-semibold text-foreground w-12 text-center tabular-nums">
             {quantity}
           </span>
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="icon"
+            className="size-12 rounded-full"
             onClick={() => setQuantity(quantity + 1)}
-            className="w-12 h-12 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center text-xl"
           >
-            +
-          </button>
+            <Plus className="size-4" />
+          </Button>
         </div>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+        <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm">
           {error}
         </div>
       )}
 
       {/* Submit */}
-      <button
+      <Button
         type="submit"
         disabled={loading}
-        className="w-full py-4 rounded-xl bg-violet-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+        className="w-full"
+        size="lg"
       >
-        {loading ? 'Saving...' : 'Add to Closet'}
-      </button>
+        {loading ? (
+          <>
+            <Loader2 className="size-4 mr-2 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          'Add to Closet'
+        )}
+      </Button>
     </form>
   );
 }

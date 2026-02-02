@@ -4,6 +4,12 @@ import { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import PageHeader from '../../components/PageHeader';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { getImageUrl, parseLocalDate } from '@/lib/supabase';
 import type { Outfit, Garment } from '@/lib/database.types';
 
@@ -39,12 +45,22 @@ export default function CalendarPage() {
     fetchOutfits();
   }, [fetchOutfits]);
 
+  // Auto-select today if there's an outfit worn today
+  useEffect(() => {
+    if (!loading && outfits.length > 0 && !selectedDate) {
+      const today = new Date();
+      const todayOutfits = outfits.filter(o => isSameDay(parseLocalDate(o.worn_date), today));
+      if (todayOutfits.length > 0) {
+        handleDayClick(today);
+      }
+    }
+  }, [loading, outfits]);
+
   async function handleDayClick(date: Date) {
     const dayOutfits = getOutfitsForDate(date);
     if (dayOutfits.length > 0) {
       setSelectedDate(date);
       setLoadingDetails(true);
-      // Fetch all outfit details with garments
       const outfitDetails: OutfitWithGarments[] = [];
       for (const outfit of dayOutfits) {
         const response = await fetch(`/api/outfits/${outfit.id}`);
@@ -69,7 +85,6 @@ export default function CalendarPage() {
   const monthEnd = endOfMonth(currentMonth);
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-  // Add padding days for the first week
   const startDay = monthStart.getDay();
   const paddingDays = Array.from({ length: startDay }, (_, i) => 
     new Date(monthStart.getTime() - (startDay - i) * 24 * 60 * 60 * 1000)
@@ -78,37 +93,35 @@ export default function CalendarPage() {
   const allDays = [...paddingDays, ...days];
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-background">
       <PageHeader title="Outfit Calendar" />
 
       <div className="p-4 max-w-lg mx-auto">
         {/* Month Navigation */}
         <div className="flex items-center justify-between mb-4">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-            className="p-2 text-zinc-600 dark:text-zinc-400"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            <ChevronLeft className="size-5" />
+          </Button>
+          <h2 className="text-lg font-semibold text-foreground">
             {format(currentMonth, 'MMMM yyyy')}
           </h2>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-            className="p-2 text-zinc-600 dark:text-zinc-400"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+            <ChevronRight className="size-5" />
+          </Button>
         </div>
 
         {/* Day Headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <div key={day} className="text-center text-xs font-medium text-zinc-500 dark:text-zinc-400 py-2">
+            <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
               {day}
             </div>
           ))}
@@ -127,13 +140,14 @@ export default function CalendarPage() {
                 key={index}
                 onClick={() => isCurrentMonth && handleDayClick(day)}
                 disabled={!isCurrentMonth}
-                className={`aspect-square rounded-lg overflow-hidden relative transition-all ${
+                className={cn(
+                  "aspect-square rounded-xl overflow-hidden relative transition-all",
                   isCurrentMonth
-                    ? 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800'
-                    : 'bg-zinc-100 dark:bg-zinc-900/50'
-                } ${isToday ? 'ring-2 ring-violet-500' : ''} ${
-                  selectedDate && isSameDay(day, selectedDate) ? 'ring-2 ring-violet-400' : ''
-                }`}
+                    ? 'bg-card border border-border hover:border-primary/50'
+                    : 'bg-muted/50',
+                  isToday && 'ring-2 ring-primary',
+                  selectedDate && isSameDay(day, selectedDate) && 'ring-2 ring-primary/60'
+                )}
               >
                 {outfitCount > 0 ? (
                   <>
@@ -144,19 +158,17 @@ export default function CalendarPage() {
                       className="object-cover"
                       sizes="50px"
                     />
-                    {/* Show badge for multiple outfits */}
                     {outfitCount > 1 && (
-                      <div className="absolute top-0.5 right-0.5 bg-violet-600 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                      <Badge className="absolute top-0.5 right-0.5 size-4 p-0 flex items-center justify-center text-[10px]">
                         {outfitCount}
-                      </div>
+                      </Badge>
                     )}
                   </>
                 ) : (
-                  <span className={`absolute inset-0 flex items-center justify-center text-sm ${
-                    isCurrentMonth
-                      ? 'text-zinc-700 dark:text-zinc-300'
-                      : 'text-zinc-400 dark:text-zinc-600'
-                  }`}>
+                  <span className={cn(
+                    "absolute inset-0 flex items-center justify-center text-sm",
+                    isCurrentMonth ? 'text-foreground' : 'text-muted-foreground'
+                  )}>
                     {format(day, 'd')}
                   </span>
                 )}
@@ -167,46 +179,44 @@ export default function CalendarPage() {
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-4 text-zinc-500">Loading...</div>
+          <div className="text-center py-4">
+            <Loader2 className="size-6 mx-auto animate-spin text-primary" />
+          </div>
         )}
 
         {/* Selected Outfits Detail */}
         {selectedDate && (
-          <div className="mt-6 space-y-4">
+          <div className="mt-6 space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium text-zinc-900 dark:text-zinc-100">
+              <h3 className="font-semibold text-foreground">
                 {format(selectedDate, 'EEEE, MMMM d, yyyy')}
                 {selectedOutfits.length > 1 && (
-                  <span className="ml-2 text-sm text-zinc-500">
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
                     ({selectedOutfits.length} outfits)
                   </span>
                 )}
               </h3>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => { setSelectedDate(null); setSelectedOutfits([]); }}
-                className="p-1 text-zinc-400"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+                <X className="size-4" />
+              </Button>
             </div>
 
             {loadingDetails ? (
-              <div className="text-center py-4">
-                <div className="w-8 h-8 mx-auto border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+              <div className="text-center py-6">
+                <Loader2 className="size-6 mx-auto animate-spin text-primary" />
               </div>
             ) : (
               selectedOutfits.map((outfit, index) => (
-                <div 
-                  key={outfit.id}
-                  className="bg-white dark:bg-zinc-900 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800"
-                >
+                <Card key={outfit.id} className="overflow-hidden">
                   {selectedOutfits.length > 1 && (
                     <div className="px-4 pt-3 pb-1">
-                      <span className="text-xs font-medium text-violet-600 dark:text-violet-400">
+                      <Badge variant="secondary" className="text-xs">
                         Outfit {index + 1}
-                      </span>
+                      </Badge>
                     </div>
                   )}
                   <div className="aspect-video relative">
@@ -217,19 +227,19 @@ export default function CalendarPage() {
                       className="object-cover"
                     />
                   </div>
-                  <div className="p-4">
+                  <CardContent className="p-4">
                     {outfit.garments.length > 0 && (
                       <div>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">
+                        <p className="text-sm text-muted-foreground mb-2">
                           Garments worn:
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {outfit.garments.map(garment => (
                             <div
                               key={garment.id}
-                              className="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full"
+                              className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full"
                             >
-                              <div className="w-6 h-6 rounded-full overflow-hidden relative">
+                              <div className="size-6 rounded-full overflow-hidden relative">
                                 <Image
                                   src={getImageUrl(garment.photo_url)}
                                   alt={garment.name}
@@ -237,14 +247,14 @@ export default function CalendarPage() {
                                   className="object-cover"
                                 />
                               </div>
-                              <span className="text-sm text-zinc-700 dark:text-zinc-300">{garment.name}</span>
+                              <span className="text-sm text-foreground">{garment.name}</span>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               ))
             )}
           </div>
@@ -252,8 +262,8 @@ export default function CalendarPage() {
 
         {/* Empty State */}
         {!loading && outfits.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-zinc-500 dark:text-zinc-400">No outfits logged this month</p>
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No outfits logged this month</p>
           </div>
         )}
       </div>
