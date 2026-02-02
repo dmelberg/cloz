@@ -33,6 +33,14 @@ export interface Preferences {
   user_id: string;
 }
 
+export interface SavedDonation {
+  id: string;
+  garment_id: string;
+  user_id: string;
+  saved_at: string;
+  donated_at: string | null;
+}
+
 // Supabase Database schema type
 export type Database = {
   public: {

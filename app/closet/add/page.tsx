@@ -11,8 +11,8 @@ export default function AddGarmentPage() {
 
   function handleSuccess() {
     toast({
-      title: 'Garment added',
-      description: 'Your new garment has been added to your closet.',
+      title: 'Item added',
+      description: 'Your new item has been added to your closet.',
       variant: 'success',
     });
     router.push('/closet');
@@ -20,7 +20,7 @@ export default function AddGarmentPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader title="Add Garment" showBack />
+      <PageHeader title="Add Item" showBack />
       <div className="p-4 max-w-lg mx-auto">
         <GarmentForm onSuccess={handleSuccess} />
       </div>

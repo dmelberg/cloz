@@ -9,27 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Minus, Plus, Loader2 } from 'lucide-react';
+import { categoriesWithoutAll, seasonsWithoutAll, categoryLabels, seasonConfig } from '@/lib/constants';
 import type { Category, Season } from '@/lib/database.types';
-
-const categories: Category[] = ['tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'accessories', 'pijama'];
-const seasons: Season[] = ['mid-season', 'summer', 'winter', 'all-season'];
-
-const categoryLabels: Record<Category, string> = {
-  tops: 'Tops',
-  bottoms: 'Bottoms',
-  dresses: 'Dresses',
-  outerwear: 'Outerwear',
-  shoes: 'Shoes',
-  accessories: 'Accessories',
-  pijama: 'Pijama',
-};
-
-const seasonLabels: Record<Season, string> = {
-  'mid-season': 'Mid-season',
-  summer: 'Summer',
-  winter: 'Winter',
-  'all-season': 'All-season',
-};
 
 interface GarmentFormProps {
   initialData?: {
@@ -128,7 +109,7 @@ export default function GarmentForm({ initialData, onSuccess }: GarmentFormProps
       <div className="space-y-2">
         <Label>Category</Label>
         <div className="grid grid-cols-3 gap-2">
-          {categories.map((cat) => (
+          {categoriesWithoutAll.map((cat) => (
             <button
               key={cat}
               type="button"
@@ -150,19 +131,20 @@ export default function GarmentForm({ initialData, onSuccess }: GarmentFormProps
       <div className="space-y-2">
         <Label>Season</Label>
         <div className="grid grid-cols-2 gap-2">
-          {seasons.map((s) => (
+          {seasonsWithoutAll.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => setSeason(s)}
               className={cn(
-                "px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                "px-3 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-1.5",
                 season === s
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
               )}
             >
-              {seasonLabels[s]}
+              {seasonConfig[s].icon}
+              {seasonConfig[s].label}
             </button>
           ))}
         </div>

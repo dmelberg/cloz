@@ -7,30 +7,9 @@ import GarmentCard from '../components/GarmentCard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Shirt, LayoutGrid } from 'lucide-react';
+import { Plus, Shirt } from 'lucide-react';
+import { categories, seasons, categoryLabels, seasonConfig } from '@/lib/constants';
 import type { Garment, Category, Season } from '@/lib/database.types';
-
-const categories: (Category | 'all')[] = ['all', 'tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'accessories', 'pijama'];
-const seasons: (Season | 'all')[] = ['all', 'mid-season', 'summer', 'winter', 'all-season'];
-
-const categoryLabels: Record<Category | 'all', string> = {
-  all: 'All',
-  tops: 'Tops',
-  bottoms: 'Bottoms',
-  dresses: 'Dresses',
-  outerwear: 'Outerwear',
-  shoes: 'Shoes',
-  accessories: 'Accessories',
-  pijama: 'Pijama',
-};
-
-const seasonLabels: Record<Season | 'all', string> = {
-  all: 'All Seasons',
-  'mid-season': 'Mid-season',
-  summer: 'Summer',
-  winter: 'Winter',
-  'all-season': 'All-season',
-};
 
 export default function ClosetPage() {
   const [garments, setGarments] = useState<Garment[]>([]);
@@ -63,16 +42,7 @@ export default function ClosetPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader
-        title="My Closet"
-        rightAction={
-          <Link href="/closet/add">
-            <Button variant="ghost" size="icon" className="text-primary">
-              <Plus className="size-6" />
-            </Button>
-          </Link>
-        }
-      />
+      <PageHeader title="My Closet" />
 
       {/* Filters */}
       <div className="px-4 py-3 space-y-3 bg-card border-b border-border max-w-lg mx-auto">
@@ -91,8 +61,9 @@ export default function ClosetPage() {
         <Tabs value={selectedSeason} onValueChange={(v) => setSelectedSeason(v as Season | 'all')}>
           <TabsList className="w-full justify-start overflow-x-auto no-scrollbar pb-1">
             {seasons.map((season) => (
-              <TabsTrigger key={season} value={season}>
-                {seasonLabels[season]}
+              <TabsTrigger key={season} value={season} className="gap-1.5">
+                {seasonConfig[season].icon}
+                {seasonConfig[season].label}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -128,18 +99,36 @@ export default function ClosetPage() {
             <Button asChild className="mt-6 rounded-full" size="lg">
               <Link href="/closet/add">
                 <Plus className="size-5 mr-2" />
-                Add Garment
+                Add Item
               </Link>
             </Button>
           </div>
         ) : (
           <div className="masonry-grid">
+            {/* Add Item Card */}
+            <Link
+              href="/closet/add"
+              className="rounded-2xl border-2 border-dashed border-border bg-card hover:border-primary/50 hover:bg-muted/50 transition-colors flex flex-col items-center justify-center aspect-[3/4] animate-fade-in-up"
+            >
+              <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+                <Plus className="size-6 text-primary" />
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">Add Item</span>
+            </Link>
             {garments.map((garment, index) => (
-              <GarmentCard key={garment.id} garment={garment} index={index} />
+              <GarmentCard key={garment.id} garment={garment} index={index + 1} />
             ))}
           </div>
         )}
       </div>
+
+      {/* Floating Add Button */}
+      <Link
+        href="/closet/add"
+        className="fixed bottom-24 right-4 size-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform z-40"
+      >
+        <Plus className="size-6" />
+      </Link>
     </div>
   );
 }

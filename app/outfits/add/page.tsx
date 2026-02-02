@@ -26,6 +26,7 @@ import {
   Sparkles,
   AlertTriangle
 } from 'lucide-react';
+import { categories, categoryLabels } from '@/lib/constants';
 import type { Garment, Category, Season } from '@/lib/database.types';
 
 interface DetectedGarment {
@@ -38,8 +39,6 @@ interface DetectedGarment {
 }
 
 type Step = 'upload' | 'analyzing' | 'review' | 'saving';
-
-const categories: (Category | 'all')[] = ['all', 'tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'accessories'];
 
 export default function AddOutfitPage() {
   const router = useRouter();
@@ -596,7 +595,7 @@ export default function AddOutfitPage() {
                     <TabsList className="w-full justify-start overflow-x-auto no-scrollbar">
                       {categories.map((cat) => (
                         <TabsTrigger key={cat} value={cat} className="text-xs">
-                          {cat === 'all' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1)}
+                          {categoryLabels[cat]}
                         </TabsTrigger>
                       ))}
                     </TabsList>

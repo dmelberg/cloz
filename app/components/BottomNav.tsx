@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutGrid, Plus, Calendar, Settings } from 'lucide-react';
+import { Home, LayoutGrid, Plus, Calendar, PackageOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -28,9 +28,9 @@ const navItems = [
     icon: Calendar,
   },
   {
-    href: '/settings',
-    label: 'Settings',
-    icon: Settings,
+    href: '/output',
+    label: 'Output',
+    icon: PackageOpen,
   },
 ];
 
