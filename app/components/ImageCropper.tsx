@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import ReactCrop, { type Crop, type PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
@@ -35,7 +35,43 @@ export default function ImageCropper({
 }: ImageCropperProps) {
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [localImageSrc, setLocalImageSrc] = useState<string | null>(null);
+  const [loadingImage, setLoadingImage] = useState(true);
   const imgRef = useRef<HTMLImageElement>(null);
+
+  // Convert external URL to local blob URL to avoid CORS issues with canvas
+  useEffect(() => {
+    async function loadImage() {
+      setLoadingImage(true);
+      try {
+        // If it's already a data URL or blob URL, use it directly
+        if (imageSrc.startsWith('data:') || imageSrc.startsWith('blob:')) {
+          setLocalImageSrc(imageSrc);
+        } else {
+          // Fetch the image as a blob to avoid CORS canvas tainting
+          const response = await fetch(imageSrc);
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          setLocalImageSrc(objectUrl);
+        }
+      } catch (err) {
+        console.error('Failed to load image:', err);
+        // Fall back to original URL
+        setLocalImageSrc(imageSrc);
+      } finally {
+        setLoadingImage(false);
+      }
+    }
+    loadImage();
+
+    // Cleanup blob URL on unmount
+    return () => {
+      if (localImageSrc && localImageSrc.startsWith('blob:') && localImageSrc !== imageSrc) {
+        URL.revokeObjectURL(localImageSrc);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageSrc]);
 
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const { width, height } = e.currentTarget;
@@ -100,9 +136,17 @@ export default function ImageCropper({
   }, [completedCrop]);
 
   const handleSaveCrop = async () => {
-    const croppedBlob = await getCroppedImg();
-    if (croppedBlob) {
-      onCropComplete(croppedBlob);
+    try {
+      const croppedBlob = await getCroppedImg();
+      if (croppedBlob) {
+        onCropComplete(croppedBlob);
+      } else {
+        console.error('Failed to create cropped image blob');
+        alert('Failed to crop image. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error cropping image:', err);
+      alert('Failed to crop image. Please try again.');
     }
   };
 
@@ -119,7 +163,7 @@ export default function ImageCropper({
         <h3 className="text-white font-medium">Crop Garment Image</h3>
         <button
           onClick={handleSaveCrop}
-          disabled={!completedCrop}
+          disabled={!completedCrop || loadingImage}
           className="text-violet-400 hover:text-violet-300 font-medium disabled:opacity-50"
         >
           Done
@@ -128,22 +172,28 @@ export default function ImageCropper({
 
       {/* Crop Area */}
       <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
-        <ReactCrop
-          crop={crop}
-          onChange={(_, percentCrop) => setCrop(percentCrop)}
-          onComplete={(c) => setCompletedCrop(c)}
-          aspect={aspectRatio}
-          className="max-h-full"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            ref={imgRef}
-            src={imageSrc}
-            alt="Crop preview"
-            onLoad={onImageLoad}
-            className="max-h-[70vh] w-auto"
-          />
-        </ReactCrop>
+        {loadingImage ? (
+          <div className="text-white">Loading image...</div>
+        ) : localImageSrc ? (
+          <ReactCrop
+            crop={crop}
+            onChange={(_, percentCrop) => setCrop(percentCrop)}
+            onComplete={(c) => setCompletedCrop(c)}
+            aspect={aspectRatio}
+            className="max-h-full"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              ref={imgRef}
+              src={localImageSrc}
+              alt="Crop preview"
+              onLoad={onImageLoad}
+              className="max-h-[70vh] w-auto"
+            />
+          </ReactCrop>
+        ) : (
+          <div className="text-red-400">Failed to load image</div>
+        )}
       </div>
 
       {/* Instructions */}
