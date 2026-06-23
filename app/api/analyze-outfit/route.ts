@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-server';
 import type { Garment, Category, Season } from '@/lib/database.types';
+import { generateImageEmbedding, formatEmbeddingForStorage } from '@/lib/embeddings';
 
 // Initialize OpenAI client lazily to avoid build-time errors
 function getOpenAIClient() {
@@ -35,6 +36,14 @@ function detectImageMimeType(base64: string): string {
 // POST /api/analyze-outfit - Analyze an outfit photo to detect garments
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { imageBase64, imageUrl } = await request.json();
 
     if (!imageBase64 && !imageUrl) {
@@ -50,11 +59,6 @@ export async function POST(request: NextRequest) {
       hasUrl: !!imageUrl,
       base64Length: imageBase64?.length 
     });
-
-    // Fetch existing garments for matching
-    const { data: existingGarments } = await supabase
-      .from('garments')
-      .select('*');
 
     // Build the image content for OpenAI with correct MIME type
     const mimeType = imageBase64 ? detectImageMimeType(imageBase64) : 'image/jpeg';
@@ -137,20 +141,83 @@ Even if the image quality is not perfect, do your best to identify the clothing 
     
     console.log(`Detected ${detectedItems.length} garments:`, detectedItems.map(i => i.name));
 
-    // Match detected garments with existing ones
-    const detectedGarments: DetectedGarment[] = detectedItems.map((item) => {
-      // Try to find a matching garment in the closet
-      const matchedGarment = findMatchingGarment(item, existingGarments || []);
-      
-      return {
-        name: item.name,
-        category: validateCategory(item.category),
-        season: validateSeason(item.season),
-        description: item.description,
-        matchedGarment: matchedGarment || undefined,
-        confidence: matchedGarment ? calculateMatchConfidence(item, matchedGarment) : 0,
-      };
-    });
+    // Generate embedding for the outfit image for matching
+    let outfitEmbedding: number[] | null = null;
+    try {
+      const imageInput = imageBase64 || imageUrl;
+      outfitEmbedding = await generateImageEmbedding(imageInput);
+      console.log('Generated outfit embedding for matching');
+    } catch (embeddingError) {
+      console.warn('Failed to generate outfit embedding, falling back to text matching:', embeddingError);
+    }
+
+    // Match detected garments with existing ones using embeddings
+    const detectedGarments: DetectedGarment[] = await Promise.all(
+      detectedItems.map(async (item) => {
+        const category = validateCategory(item.category);
+        
+        // Try embedding-based matching first
+        let matchedGarment: Garment | null = null;
+        let confidence = 0;
+
+        if (outfitEmbedding) {
+          try {
+            // Use pgvector similarity search
+            const { data: matches, error } = await supabase.rpc('match_garments_by_embedding', {
+              query_embedding: formatEmbeddingForStorage(outfitEmbedding),
+              match_threshold: 0.5,
+              match_count: 3,
+              filter_user_id: user.id,
+              filter_category: category,
+            });
+
+            if (!error && matches && matches.length > 0) {
+              // Get the best match
+              const bestMatch = matches[0];
+              matchedGarment = {
+                id: bestMatch.id,
+                name: bestMatch.name,
+                photo_url: bestMatch.photo_url,
+                category: bestMatch.category,
+                season: bestMatch.season,
+                quantity: 1,
+                use_count: 0,
+                created_at: '',
+                user_id: user.id,
+              };
+              confidence = Math.round(bestMatch.similarity * 100);
+              console.log(`Embedding match found for ${item.name}: ${bestMatch.name} (${confidence}%)`);
+            }
+          } catch (matchError) {
+            console.warn('Embedding match failed:', matchError);
+          }
+        }
+
+        // Fall back to text matching if embedding matching failed
+        if (!matchedGarment) {
+          const { data: existingGarments } = await supabase
+            .from('garments')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('category', category);
+
+          matchedGarment = findMatchingGarmentByText(item, existingGarments || []);
+          if (matchedGarment) {
+            confidence = calculateTextMatchConfidence(item, matchedGarment);
+            console.log(`Text match found for ${item.name}: ${matchedGarment.name} (${confidence}%)`);
+          }
+        }
+
+        return {
+          name: item.name,
+          category,
+          season: validateSeason(item.season),
+          description: item.description,
+          matchedGarment: matchedGarment || undefined,
+          confidence,
+        };
+      })
+    );
 
     return NextResponse.json({
       detectedGarments,
@@ -178,25 +245,19 @@ function validateSeason(season: string): Season {
   return validSeasons.includes(normalized) ? normalized : 'all-season';
 }
 
-function findMatchingGarment(
+// Fallback text-based matching (used when embeddings are not available)
+function findMatchingGarmentByText(
   detected: { name: string; category: string; description: string },
   existingGarments: Garment[]
 ): Garment | null {
   if (!existingGarments.length) return null;
 
-  // Simple matching based on category and name similarity
-  const sameCategoryGarments = existingGarments.filter(
-    g => g.category === detected.category.toLowerCase()
-  );
-
-  if (!sameCategoryGarments.length) return null;
-
   // Find the best match by name similarity
   let bestMatch: Garment | null = null;
   let bestScore = 0;
 
-  for (const garment of sameCategoryGarments) {
-    const score = calculateSimilarity(
+  for (const garment of existingGarments) {
+    const score = calculateTextSimilarity(
       detected.name.toLowerCase() + ' ' + detected.description.toLowerCase(),
       garment.name.toLowerCase()
     );
@@ -209,7 +270,7 @@ function findMatchingGarment(
   return bestMatch;
 }
 
-function calculateSimilarity(str1: string, str2: string): number {
+function calculateTextSimilarity(str1: string, str2: string): number {
   const words1 = str1.split(/\s+/).filter(w => w.length > 2);
   const words2 = str2.split(/\s+/).filter(w => w.length > 2);
   
@@ -226,11 +287,11 @@ function calculateSimilarity(str1: string, str2: string): number {
   return matches / Math.max(words1.length, words2.length, 1);
 }
 
-function calculateMatchConfidence(
+function calculateTextMatchConfidence(
   detected: { name: string; description: string },
   matched: Garment
 ): number {
-  const similarity = calculateSimilarity(
+  const similarity = calculateTextSimilarity(
     detected.name.toLowerCase() + ' ' + detected.description.toLowerCase(),
     matched.name.toLowerCase()
   );

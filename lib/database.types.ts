@@ -11,6 +11,7 @@ export interface Garment {
   season: Season;
   created_at: string;
   user_id: string;
+  embedding?: string; // Jina CLIP v2 1024-dimensional vector stored as pgvector
 }
 
 export interface Outfit {
@@ -57,6 +58,7 @@ export type Database = {
           season: Season;
           created_at?: string;
           user_id: string;
+          embedding?: string;
         };
         Update: {
           id?: string;
@@ -68,6 +70,7 @@ export type Database = {
           season?: Season;
           created_at?: string;
           user_id?: string;
+          embedding?: string;
         };
         Relationships: [];
       };

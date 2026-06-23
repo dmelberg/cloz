@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import type { Category, Season, Garment } from '@/lib/database.types';
+import { generateImageEmbedding, formatEmbeddingForStorage } from '@/lib/embeddings';
 
 // GET /api/garments - Get all garments with optional filters
 export async function GET(request: NextRequest) {
@@ -69,6 +70,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Generate CLIP embedding for the garment image
+  let embedding: string | null = null;
+  try {
+    const embeddingVector = await generateImageEmbedding(photo_url);
+    embedding = formatEmbeddingForStorage(embeddingVector);
+    console.log('Generated embedding for new garment');
+  } catch (embeddingError) {
+    // Log but don't fail - embedding can be generated later via backfill
+    console.warn('Failed to generate embedding:', embeddingError);
+  }
+
   const { data, error } = await supabase
     .from('garments')
     .insert({
@@ -79,6 +91,7 @@ export async function POST(request: NextRequest) {
       category,
       season,
       user_id: user.id,
+      ...(embedding && { embedding }),
     })
     .select()
     .single();
